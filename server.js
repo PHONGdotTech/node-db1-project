@@ -19,13 +19,88 @@ server.post("/", validateBody, (req,res)=>{
 
 //Read all accounts
 server.get("/", (req,res)=>{
-    db('accounts')
-    .then(accounts =>{
-        res.status(200).json(accounts)
-    })
-    .catch(err=>{
-        res.status(500).json({errorMessage: "There was an error getting accounts."})
-    })
+    // (0) If req.query has no keys and is an object (meaning it's empty)
+    // then: just get all accounts
+    if (Object.keys(req.query).length === 0 && req.query.constructor === Object){
+        db('accounts')
+        .then(accounts =>{
+            res.status(200).json(accounts)
+        })
+        .catch(err=>{
+            res.status(500).json({errorMessage: "There was an error getting accounts."})
+        })
+    } 
+    // (3) If req.query has a limit, sortby, and sortdir, and sortby and sortdir are verified
+    // then: show all accounts, sort them, and limit them
+    else if(req.query.limit && Number.isInteger(parseInt(req.query.limit)) && req.query.sortby && (req.query.sortby === "id" || req.query.sortby === "name" || req.query.sortby === "budget") && req.query.sortdir && (req.query.sortdir === "asc" || req.query.sortdir === "desc")){
+        db(`accounts`).orderByRaw(`LOWER(${req.query.sortby}) ${req.query.sortdir}`).limit(parseInt(req.query.limit))
+        .then(accounts =>{
+            res.status(200).json(accounts)
+        })
+        .catch(err=>{
+            res.status(500).json({errorMessage: "3(limit, sortby, sortdir): There was an error getting accounts and sorting them in that order and direction, while imposing a limit."})
+        })
+    }
+
+    // (2) If req.query has only a sortby and sortdir, and sortby and sortdir are verified
+    // then: get all accounts and sort them in that by that order and in that direction
+    else if (req.query.sortby && (req.query.sortby === "id" || req.query.sortby === "name" || req.query.sortby === "budget") && req.query.sortdir && (req.query.sortdir === "asc" || req.query.sortdir === "desc")){
+        db(`accounts`).orderByRaw(`LOWER(${req.query.sortby}) ${req.query.sortdir}`)
+        .then(accounts =>{
+            res.status(200).json(accounts)
+        })
+        .catch(err=>{
+            res.status(500).json({errorMessage: "2(sortby and sortdir): There was an error getting accounts and sorting them in that order and direction."})
+        })
+    }
+
+    // (2) If req.query only has a limit and sortby, and sortby and limit are verified
+    // then: get all accounts and sort them, and limit them
+    else if (req.query.limit && Number.isInteger(parseInt(req.query.limit)) && req.query.sortby && req.query.sortby === "id" || req.query.sortby === "name" || req.query.sortby === "budget"){
+        db(`accounts`).orderByRaw(`${req.query.sortby}`).limit(parseInt(req.query.limit))
+        .then(accounts =>{
+            res.status(200).json(accounts)
+        })
+        .catch(err=>{
+            res.status(500).json({errorMessage: "2(limit and sortby): There was an error getting accounts and sorting them in that order and imposing a limit."})
+        })
+    }
+
+    // (1) if only a limit exists and after parsing to an int, limit is a number
+    // then: get all accounts while imposing the specified limit
+    else if (req.query.limit && Number.isInteger(parseInt(req.query.limit))){
+        db('accounts').limit(parseInt(req.query.limit))
+        .then(accounts =>{
+            res.status(200).json(accounts)
+        })
+        .catch(err=>{
+            res.status(500).json({errorMessage: "1(limit): There was an error getting accounts and imposing the limit."})
+        })
+    }
+
+    // (1) if only sortby exists, and sortby is id, name, or budget
+    // then: get all accounts and sort them by that order
+    else if (req.query.sortby && req.query.sortby === "id" || req.query.sortby === "name" || req.query.sortby === "budget") {
+        db(`accounts`).orderByRaw(`${req.query.sortby}`)
+        .then(accounts =>{
+            res.status(200).json(accounts)
+        })
+        .catch(err=>{
+            res.status(500).json({errorMessage: "1(sortby): There was an error getting accounts and sorting them."})
+        })
+    }
+
+    // (0) If all else fails, just show all accounts
+    else {
+        db('accounts')
+        .then(accounts =>{
+            res.status(200).json(accounts)
+        })
+        .catch(err=>{
+            res.status(500).json({errorMessage: "There was an error getting accounts."})
+        })
+    }
+    
 })
 
 //Read an individual account
