@@ -82,7 +82,12 @@ function validateBody(req, res, next){
             db('accounts').where({name: req.body.name})
             .first()
             .then(account=>{
-                !account ? next() : res.status(400).json({message:"name is currently in use by another account. please change name"})
+                !account ? next() : 
+                    //does the request params id exist and does it equal the current account id?
+                    //if yes: that means we are updating the account and continue with next()
+                    //if no: that means there is another account with the same name
+                    req.params.id && parseInt(req.params.id) === account.id ? next() :
+                    res.status(400).json({message:"name is currently in use by another account. please change name"})
             })
             .catch(err=>{
                 res.status(500).json({message:"Couldn't compare that account name to stored name."})
